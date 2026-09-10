@@ -1,0 +1,18 @@
+{
+  "name": "dead-x-bot",
+  "version": "1.0.0",
+  "description": "☠️ ᴅᴇᴀᴅ × ʙᴏᴛ — WhatsApp automation bot with Telegram Spare Panel",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "pino": "latest",
+    "qrcode-terminal": "latest",
+    "telegraf": "latest"
+  }
+}
