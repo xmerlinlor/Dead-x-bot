@@ -7,6 +7,8 @@ import P from "pino";
 import fs from "fs";
 import path from "path";
 
+import { registerWhatsAppHandler } from "./handler.js";
+
 const sessionDir = path.resolve("./session");
 
 let socket = null;
@@ -36,24 +38,35 @@ export async function connectWhatsApp() {
 
   socket.ev.on("creds.update", saveCreds);
 
-  socket.ev.on("connection.update", ({ connection, lastDisconnect }) => {
-    if (connection === "open") {
-      console.log("🟢 ᴅᴇᴀᴅ × ʙᴏᴛ — ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛᴇᴅ");
-    }
+  // ☠️ CONNECT COMMAND HANDLER
+  registerWhatsAppHandler(socket);
 
-    if (connection === "close") {
-      const statusCode =
-        lastDisconnect?.error?.output?.statusCode;
+  socket.ev.on(
+    "connection.update",
+    ({ connection, lastDisconnect }) => {
 
-      console.log(
-        `🔴 ᴡʜᴀᴛsᴀᴘᴘ ᴅɪsᴄᴏɴɴᴇᴄᴛᴇᴅ: ${statusCode || "unknown"}`
-      );
+      if (connection === "open") {
+        console.log(
+          "🟢 ᴅᴇᴀᴅ × ʙᴏᴛ — ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛᴇᴅ"
+        );
+      }
 
-      if (statusCode !== DisconnectReason.loggedOut) {
-        setTimeout(connectWhatsApp, 5000);
+      if (connection === "close") {
+        const statusCode =
+          lastDisconnect?.error?.output?.statusCode;
+
+        console.log(
+          `🔴 ᴡʜᴀᴛsᴀᴘᴘ ᴅɪsᴄᴏɴɴᴇᴄᴛᴇᴅ: ${
+            statusCode || "unknown"
+          }`
+        );
+
+        if (statusCode !== DisconnectReason.loggedOut) {
+          setTimeout(connectWhatsApp, 5000);
+        }
       }
     }
-  });
+  );
 
   return socket;
 }
