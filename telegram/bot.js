@@ -116,7 +116,6 @@ bot.on("text", async (ctx, next) => {
         ]
       ])
     );
-
   } catch (error) {
     clearPairing(userId);
 
@@ -157,7 +156,7 @@ bot.action("status", async (ctx) => {
 ╭━━━〔 📊 sᴛᴀᴛᴜs 〕━━━╮
 ┃
 ┃ 🟢 ᴛᴇʟᴇɢʀᴀᴍ: ᴏɴʟɪɴᴇ
-┃ ${"🟢"} ᴡʜᴀᴛsᴀᴘᴘ: ᴇɴɢɪɴᴇ ʀᴜɴɴɪɴɢ
+┃ 🟢 ᴡʜᴀᴛsᴀᴘᴘ: ᴇɴɢɪɴᴇ ʀᴜɴɴɪɴɢ
 ┃ ⚡ ʙᴏᴛ: ʀᴜɴɴɪɴɢ
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
@@ -250,9 +249,3 @@ bot.catch((error) => {
 });
 
 export default bot;
-
-Save "telegram/bot.js".
-
-⚠️ One important limitation: this version receives the phone number as a normal Telegram message. It does not put a text-entry field literally inside the inline Telegram panel; Telegram inline keyboards don't provide arbitrary text input. If you want the phone field visually embedded inside the panel, we'll need a Telegram Mini App/Web App.
-
-After saving, reply "DONE".
