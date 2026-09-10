@@ -3,8 +3,14 @@ import { getWhatsAppSocket } from "../whatsapp/connection.js";
 
 const waitingForNumber = new Set();
 
-export function startPairing(ctx) {
-  waitingForNumber.add(ctx.from.id);
+export async function startPairing(ctx) {
+  const userId = ctx.from?.id;
+
+  if (!userId) {
+    throw new Error("Telegram user ID not found.");
+  }
+
+  waitingForNumber.add(userId);
 
   return ctx.editMessageText(
     `
@@ -40,17 +46,52 @@ export async function requestPairingCode(phoneNumber) {
   const sock = getWhatsAppSocket();
 
   if (!sock) {
-    throw new Error("WhatsApp socket is not ready.");
+    throw new Error(
+      "WhatsApp socket is not ready. Start the WhatsApp connection first."
+    );
   }
 
   const cleanNumber = String(phoneNumber)
-    .replace(/[^\d]/g, "");
+    .replace(/\D/g, "");
 
-  if (!cleanNumber) {
-    throw new Error("Invalid phone number.");
+  if (!/^\d{7,15}$/.test(cleanNumber)) {
+    throw new Error("Invalid WhatsApp phone number.");
   }
 
-  const code = await sock.requestPairingCode(cleanNumber);
+  console.log(
+    `🔗 ʀᴇǫᴜᴇsᴛɪɴɢ ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ ғᴏʀ +${cleanNumber}`
+  );
 
-  return code;
+  try {
+    /*
+     * Baileys pairing codes require the socket
+     * to be available before requesting the code.
+     */
+    if (sock.user) {
+      throw new Error(
+        "WhatsApp is already connected with an existing session."
+      );
+    }
+
+    const code = await sock.requestPairingCode(cleanNumber);
+
+    if (!code) {
+      throw new Error(
+        "WhatsApp did not return a pairing code."
+      );
+    }
+
+    console.log(
+      `🔐 ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ ɢᴇɴᴇʀᴀᴛᴇᴅ: ${code}`
+    );
+
+    return code;
+  } catch (error) {
+    console.error(
+      "☠️ ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ ᴇʀʀᴏʀ:",
+      error
+    );
+
+    throw error;
+  }
 }
