@@ -1,4 +1,5 @@
 import { Markup } from "telegraf";
+import { getWhatsAppSocket } from "../whatsapp/connection.js";
 
 const waitingForNumber = new Set();
 
@@ -10,11 +11,12 @@ export function startPairing(ctx) {
 ╭━━━〔 🔗 ᴘᴀɪʀ ᴡʜᴀᴛsᴀᴘᴘ 〕━━━╮
 ┃
 ┃ 📱 sᴇɴᴅ ʏᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ
-┃ ɴᴜᴍʙᴇʀ ɪɴ ɪɴᴛᴇʀɴᴀᴛɪᴏɴᴀʟ
-┃ ғᴏʀᴍᴀᴛ.
+┃ ɴᴜᴍʙᴇʀ ʙᴇʟᴏᴡ.
 ┃
 ┃ ᴇxᴀᴍᴘʟᴇ:
 ┃ +2348012345678
+┃
+┃ ⚡ ᴜsᴇ ɪɴᴛᴇʀɴᴀᴛɪᴏɴᴀʟ ғᴏʀᴍᴀᴛ
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
 `,
@@ -32,4 +34,23 @@ export function isWaitingForNumber(userId) {
 
 export function clearPairing(userId) {
   waitingForNumber.delete(userId);
+}
+
+export async function requestPairingCode(phoneNumber) {
+  const sock = getWhatsAppSocket();
+
+  if (!sock) {
+    throw new Error("WhatsApp socket is not ready.");
+  }
+
+  const cleanNumber = String(phoneNumber)
+    .replace(/[^\d]/g, "");
+
+  if (!cleanNumber) {
+    throw new Error("Invalid phone number.");
+  }
+
+  const code = await sock.requestPairingCode(cleanNumber);
+
+  return code;
 }
