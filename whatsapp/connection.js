@@ -12,6 +12,8 @@ import { registerWhatsAppHandler } from "./handler.js";
 const sessionDir = path.resolve("./session");
 
 let socket = null;
+let connecting = false;
+let connectionReady = false;
 
 export function getWhatsAppSocket() {
   return socket;
@@ -21,52 +23,114 @@ export function isWhatsAppConnected() {
   return socket?.user != null;
 }
 
+export function isWhatsAppReady() {
+  return socket != null && connectionReady;
+}
+
 export async function connectWhatsApp() {
-  if (!fs.existsSync(sessionDir)) {
-    fs.mkdirSync(sessionDir, { recursive: true });
+  if (connecting) {
+    return socket;
   }
 
-  const { state, saveCreds } =
-    await useMultiFileAuthState(sessionDir);
+  connecting = true;
 
-  socket = makeWASocket({
-    auth: state,
-    logger: P({ level: "silent" }),
-    printQRInTerminal: false,
-    browser: ["DEAD X BOT", "Chrome", "1.0.0"]
-  });
+  try {
+    if (!fs.existsSync(sessionDir)) {
+      fs.mkdirSync(sessionDir, { recursive: true });
+    }
 
-  socket.ev.on("creds.update", saveCreds);
+    const { state, saveCreds } =
+      await useMultiFileAuthState(sessionDir);
 
-  // ☠️ CONNECT COMMAND HANDLER
-  registerWhatsAppHandler(socket);
+    /*
+     * If an existing WhatsApp account is already registered
+     * in this session, keep using that account.
+     */
+    if (state.creds.registered) {
+      console.log(
+        "⚠️ ᴇxɪsᴛɪɴɢ ᴡʜᴀᴛsᴀᴘᴘ sᴇssɪᴏɴ ғᴏᴜɴᴅ."
+      );
+    } else {
+      console.log(
+        "🔗 ɴᴏ ᴡʜᴀᴛsᴀᴘᴘ sᴇssɪᴏɴ — ᴘᴀɪʀɪɴɢ ʀᴇᴀᴅʏ."
+      );
+    }
 
-  socket.ev.on(
-    "connection.update",
-    ({ connection, lastDisconnect }) => {
+    socket = makeWASocket({
+      auth: state,
+      logger: P({ level: "silent" }),
+      printQRInTerminal: false,
+      browser: [
+        "DEAD X BOT",
+        "Chrome",
+        "1.0.0"
+      ],
+      markOnlineOnConnect: false,
+      syncFullHistory: false
+    });
 
-      if (connection === "open") {
-        console.log(
-          "🟢 ᴅᴇᴀᴅ × ʙᴏᴛ — ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛᴇᴅ"
-        );
-      }
+    socket.ev.on("creds.update", saveCreds);
 
-      if (connection === "close") {
-        const statusCode =
-          lastDisconnect?.error?.output?.statusCode;
+    /*
+     * Register WhatsApp message handler.
+     */
+    registerWhatsAppHandler(socket);
 
-        console.log(
-          `🔴 ᴡʜᴀᴛsᴀᴘᴘ ᴅɪsᴄᴏɴɴᴇᴄᴛᴇᴅ: ${
-            statusCode || "unknown"
-          }`
-        );
+    socket.ev.on(
+      "connection.update",
+      ({ connection, lastDisconnect }) => {
+        if (connection === "connecting") {
+          connectionReady = false;
 
-        if (statusCode !== DisconnectReason.loggedOut) {
-          setTimeout(connectWhatsApp, 5000);
+          console.log(
+            "🟡 ᴅᴇᴀᴅ × ʙᴏᴛ — ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛɪɴɢ..."
+          );
+        }
+
+        if (connection === "open") {
+          connectionReady = true;
+
+          console.log(
+            "🟢 ᴅᴇᴀᴅ × ʙᴏᴛ — ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛᴇᴅ"
+          );
+        }
+
+        if (connection === "close") {
+          connectionReady = false;
+
+          const statusCode =
+            lastDisconnect?.error?.output?.statusCode;
+
+          console.log(
+            `🔴 ᴡʜᴀᴛsᴀᴘᴘ ᴅɪsᴄᴏɴɴᴇᴄᴛᴇᴅ: ${
+              statusCode || "unknown"
+            }`
+          );
+
+          socket = null;
+
+          if (
+            statusCode !== DisconnectReason.loggedOut
+          ) {
+            console.log(
+              "🔄 ʀᴇᴄᴏɴɴᴇᴄᴛɪɴɢ ᴡʜᴀᴛsᴀᴘᴘ..."
+            );
+
+            setTimeout(() => {
+              connectWhatsApp().catch((error) => {
+                console.error(
+                  "☠️ ʀᴇᴄᴏɴɴᴇᴄᴛ ᴇʀʀᴏʀ:",
+                  error
+                );
+              });
+            }, 5000);
+          }
         }
       }
-    }
-  );
+    );
 
-  return socket;
+    return socket;
+  } finally {
+    connecting = false;
+  }
 }
