@@ -1,57 +1,154 @@
-import { Telegraf } from "telegraf";
+import { Telegraf, Markup } from "telegraf";
+
 import config from "../config.js";
 import { mainPanel } from "./menu.js";
-import { startPairing } from "./pairing.js";
+
+import {
+  startPairing,
+  isWaitingForNumber,
+  clearPairing,
+  requestPairingCode
+} from "./pairing.js";
 
 const bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
 
-// /start → open the Spare Panel
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏠 START
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 bot.start(async (ctx) => {
   const panel = mainPanel();
 
   await ctx.reply(panel.text, panel.keyboard);
 });
 
-// 🔗 Pair WhatsApp
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🔗 PAIR WHATSAPP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 bot.action("pair", async (ctx) => {
   await ctx.answerCbQuery();
 
   await startPairing(ctx);
 });
 
-// 📱 Enter number
-bot.action("enter_number", async (ctx) => {
-  await ctx.answerCbQuery();
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📱 PHONE NUMBER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-  await ctx.editMessageText(
-    `
-╭━━━〔 📱 ᴘʜᴏɴᴇ ɴᴜᴍʙᴇʀ 〕━━━╮
+bot.on("text", async (ctx, next) => {
+  const userId = ctx.from?.id;
+
+  if (!userId || !isWaitingForNumber(userId)) {
+    return next();
+  }
+
+  const phoneNumber = ctx.message.text.trim();
+
+  try {
+    const cleanNumber = phoneNumber.replace(/[^\d]/g, "");
+
+    if (!/^\d{7,15}$/.test(cleanNumber)) {
+      await ctx.reply(
+        `
+╭━━━〔 ❌ ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ 〕━━━╮
 ┃
-┃ sᴇɴᴅ ʏᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ
-┃ ɴᴜᴍʙᴇʀ ɪɴ ɪɴᴛᴇʀɴᴀᴛɪᴏɴᴀʟ
-┃ ғᴏʀᴍᴀᴛ.
+┃ 📱 ᴇɴᴛᴇʀ ᴀ ᴠᴀʟɪᴅ
+┃ ᴡʜᴀᴛsᴀᴘᴘ ɴᴜᴍʙᴇʀ.
 ┃
 ┃ ᴇxᴀᴍᴘʟᴇ:
 ┃ +2348012345678
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-`,
-    {
-      reply_markup: {
-        inline_keyboard: [
+        `,
+        Markup.inlineKeyboard([
           [
-            {
-              text: "◀️ ʙᴀᴄᴋ",
-              callback_data: "pair"
-            }
+            Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
           ]
-        ]
-      }
+        ])
+      );
+
+      return;
     }
-  );
+
+    await ctx.reply(
+      `
+╭━━━〔 ⚡ ɢᴇɴᴇʀᴀᴛɪɴɢ ᴄᴏᴅᴇ 〕━━━╮
+┃
+┃ 📱 ɴᴜᴍʙᴇʀ: +${cleanNumber}
+┃
+┃ ⏳ ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ...
+┃
+╰━━━━━━━━━━━━━━━━━━━━╯
+      `
+    );
+
+    const code = await requestPairingCode(cleanNumber);
+
+    clearPairing(userId);
+
+    await ctx.reply(
+      `
+╭━━━〔 🔐 ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ 〕━━━╮
+┃
+┃ 📱 ɴᴜᴍʙᴇʀ
+┃ +${cleanNumber}
+┃
+┃ 🔑 ᴄᴏᴅᴇ
+┃
+┃ 『 ${code} 』
+┃
+┃ ⚡ ᴏᴘᴇɴ ᴡʜᴀᴛsᴀᴘᴘ
+┃ → sᴇᴛᴛɪɴɢs
+┃ → ʟɪɴᴋᴇᴅ ᴅᴇᴠɪᴄᴇs
+┃ → ʟɪɴᴋ ᴀ ᴅᴇᴠɪᴄᴇ
+┃
+┃ ᴇɴᴛᴇʀ ᴛʜᴇ ᴄᴏᴅᴇ ᴀʙᴏᴠᴇ.
+┃
+╰━━━━━━━━━━━━━━━━━━━━╯
+      `,
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback("🔄 ᴘᴀɪʀ ᴀɢᴀɪɴ", "pair")
+        ],
+        [
+          Markup.button.callback("🏠 ᴍᴀɪɴ ᴘᴀɴᴇʟ", "home")
+        ]
+      ])
+    );
+
+  } catch (error) {
+    clearPairing(userId);
+
+    console.error("☠️ ᴘᴀɪʀɪɴɢ ᴇʀʀᴏʀ:", error);
+
+    await ctx.reply(
+      `
+╭━━━〔 ❌ ᴘᴀɪʀɪɴɢ ғᴀɪʟᴇᴅ 〕━━━╮
+┃
+┃ ⚠️ ᴜɴᴀʙʟᴇ ᴛᴏ ɢᴇɴᴇʀᴀᴛᴇ
+┃ ᴛʜᴇ ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ.
+┃
+┃ 🔧 ᴄʜᴇᴄᴋ ᴛʜᴇ ʀᴇɴᴅᴇʀ ʟᴏɢs.
+┃
+╰━━━━━━━━━━━━━━━━━━━━╯
+      `,
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback("🔄 ʀᴇᴛʀʏ", "pair")
+        ],
+        [
+          Markup.button.callback("🏠 ʜᴏᴍᴇ", "home")
+        ]
+      ])
+    );
+  }
 });
 
-// 📊 Status
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 STATUS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 bot.action("status", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -60,27 +157,23 @@ bot.action("status", async (ctx) => {
 ╭━━━〔 📊 sᴛᴀᴛᴜs 〕━━━╮
 ┃
 ┃ 🟢 ᴛᴇʟᴇɢʀᴀᴍ: ᴏɴʟɪɴᴇ
-┃ 🔴 ᴡʜᴀᴛsᴀᴘᴘ: ᴅɪsᴄᴏɴɴᴇᴄᴛᴇᴅ
+┃ ${"🟢"} ᴡʜᴀᴛsᴀᴘᴘ: ᴇɴɢɪɴᴇ ʀᴜɴɴɪɴɢ
 ┃ ⚡ ʙᴏᴛ: ʀᴜɴɴɪɴɢ
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "◀️ ʙᴀᴄᴋ",
-              callback_data: "home"
-            }
-          ]
-        ]
-      }
-    }
+    `,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
+      ]
+    ])
   );
 });
 
-// 📖 How to use
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📖 HOW TO USE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 bot.action("howto", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -90,32 +183,31 @@ bot.action("howto", async (ctx) => {
 ┃
 ┃ 1️⃣ ᴄʟɪᴄᴋ 🔗 ᴘᴀɪʀ
 ┃
-┃ 2️⃣ ᴇɴᴛᴇʀ ʏᴏᴜʀ ɴᴜᴍʙᴇʀ
+┃ 2️⃣ sᴇɴᴅ ʏᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ
+┃    ɴᴜᴍʙᴇʀ
 ┃
-┃ 3️⃣ ɢᴇᴛ ᴛʜᴇ ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ
+┃ 3️⃣ ʀᴇᴄᴇɪᴠᴇ ᴛʜᴇ
+┃    ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ
 ┃
 ┃ 4️⃣ ᴇɴᴛᴇʀ ᴛʜᴇ ᴄᴏᴅᴇ
+┃    ɪɴ ᴡʜᴀᴛsᴀᴘᴘ
 ┃
 ┃ 5️⃣ 🟢 ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛs
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "◀️ ʙᴀᴄᴋ",
-              callback_data: "home"
-            }
-          ]
-        ]
-      }
-    }
+    `,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
+      ]
+    ])
   );
 });
 
-// ⚙️ Settings
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⚙️ SETTINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 bot.action("settings", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -128,23 +220,19 @@ bot.action("settings", async (ctx) => {
 ┃ 🔐 sᴇᴄᴜʀɪᴛʏ: ᴇɴᴀʙʟᴇᴅ
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: "◀️ ʙᴀᴄᴋ",
-              callback_data: "home"
-            }
-          ]
-        ]
-      }
-    }
+    `,
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
+      ]
+    ])
   );
 });
 
-// 🏠 Back to main panel
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏠 HOME
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 bot.action("home", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -153,9 +241,18 @@ bot.action("home", async (ctx) => {
   await ctx.editMessageText(panel.text, panel.keyboard);
 });
 
-// Error handler
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ❌ ERROR HANDLER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
 bot.catch((error) => {
-  console.error("☠️ Telegram error:", error);
+  console.error("☠️ ᴛᴇʟᴇɢʀᴀᴍ ᴇʀʀᴏʀ:", error);
 });
 
 export default bot;
+
+Save "telegram/bot.js".
+
+⚠️ One important limitation: this version receives the phone number as a normal Telegram message. It does not put a text-entry field literally inside the inline Telegram panel; Telegram inline keyboards don't provide arbitrary text input. If you want the phone field visually embedded inside the panel, we'll need a Telegram Mini App/Web App.
+
+After saving, reply "DONE".
