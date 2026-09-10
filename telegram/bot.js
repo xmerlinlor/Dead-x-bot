@@ -1,6 +1,7 @@
 import { Telegraf } from "telegraf";
 import config from "../config.js";
 import { mainPanel } from "./menu.js";
+import { startPairing } from "./pairing.js";
 
 const bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
 
@@ -11,34 +12,11 @@ bot.start(async (ctx) => {
   await ctx.reply(panel.text, panel.keyboard);
 });
 
-// 🔗 Pair
+// 🔗 Pair WhatsApp
 bot.action("pair", async (ctx) => {
   await ctx.answerCbQuery();
 
-  await ctx.editMessageText(
-    `
-╭━━━〔 ☠️ ᴅᴇᴀᴅ × ʙᴏᴛ 〕━━━╮
-┃
-┃ 🔗 ᴘᴀɪʀ ᴡʜᴀᴛsᴀᴘᴘ
-┃
-┃ 📱 ᴇɴᴛᴇʀ ʏᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ
-┃ ɴᴜᴍʙᴇʀ ᴛᴏ ᴄᴏɴᴛɪɴᴜᴇ.
-┃
-╰━━━━━━━━━━━━━━━━━━━━╯
-`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [
-            { text: "📱 ᴇɴᴛᴇʀ ɴᴜᴍʙᴇʀ", callback_data: "enter_number" }
-          ],
-          [
-            { text: "◀️ ʙᴀᴄᴋ", callback_data: "home" }
-          ]
-        ]
-      }
-    }
-  );
+  await startPairing(ctx);
 });
 
 // 📱 Enter number
@@ -62,7 +40,10 @@ bot.action("enter_number", async (ctx) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "◀️ ʙᴀᴄᴋ", callback_data: "pair" }
+            {
+              text: "◀️ ʙᴀᴄᴋ",
+              callback_data: "pair"
+            }
           ]
         ]
       }
@@ -88,7 +69,10 @@ bot.action("status", async (ctx) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "◀️ ʙᴀᴄᴋ", callback_data: "home" }
+            {
+              text: "◀️ ʙᴀᴄᴋ",
+              callback_data: "home"
+            }
           ]
         ]
       }
@@ -120,7 +104,10 @@ bot.action("howto", async (ctx) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "◀️ ʙᴀᴄᴋ", callback_data: "home" }
+            {
+              text: "◀️ ʙᴀᴄᴋ",
+              callback_data: "home"
+            }
           ]
         ]
       }
@@ -146,7 +133,10 @@ bot.action("settings", async (ctx) => {
       reply_markup: {
         inline_keyboard: [
           [
-            { text: "◀️ ʙᴀᴄᴋ", callback_data: "home" }
+            {
+              text: "◀️ ʙᴀᴄᴋ",
+              callback_data: "home"
+            }
           ]
         ]
       }
@@ -154,7 +144,7 @@ bot.action("settings", async (ctx) => {
   );
 });
 
-// 🏠 Back to panel
+// 🏠 Back to main panel
 bot.action("home", async (ctx) => {
   await ctx.answerCbQuery();
 
@@ -163,6 +153,7 @@ bot.action("home", async (ctx) => {
   await ctx.editMessageText(panel.text, panel.keyboard);
 });
 
+// Error handler
 bot.catch((error) => {
   console.error("☠️ Telegram error:", error);
 });
