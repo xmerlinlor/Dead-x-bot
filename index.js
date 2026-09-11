@@ -31,55 +31,55 @@ app.listen(PORT, () => {
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🚀 START SERVICES
+   📱 WHATSAPP
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-async function startBot() {
-  try {
-    /*
-     * Start WhatsApp first.
-     * This creates the Baileys socket before
-     * Telegram becomes available for pairing.
-     */
+connectWhatsApp()
+  .then(() => {
     console.log(
       "📱 ᴡʜᴀᴛsᴀᴘᴘ ᴇɴɢɪɴᴇ — sᴛᴀʀᴛɪɴɢ..."
     );
+  })
+  .catch((error) => {
+    console.error(
+      "🔴 ᴡʜᴀᴛsᴀᴘᴘ sᴛᴀʀᴛᴜᴘ ᴇʀʀᴏʀ:",
+      error
+    );
+  });
 
-    const socket = await connectWhatsApp();
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🤖 TELEGRAM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-    if (socket) {
-      console.log(
-        "🟢 ᴡʜᴀᴛsᴀᴘᴘ sᴏᴄᴋᴇᴛ — ʀᴇᴀᴅʏ"
-      );
-    }
+async function startTelegram() {
+  if (!config.TELEGRAM_BOT_TOKEN) {
+    console.error(
+      "🔴 ᴛᴇʟᴇɢʀᴀᴍ ʙᴏᴛ ᴛᴏᴋᴇɴ ɪs ɴᴏᴛ sᴇᴛ."
+    );
+    return;
+  }
 
-    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       🤖 TELEGRAM
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-
-    if (!config.TELEGRAM_BOT_TOKEN) {
-      console.log(
-        "⚠️ ᴛᴇʟᴇɢʀᴀᴍ ʙᴏᴛ ᴛᴏᴋᴇɴ ɴᴏᴛ sᴇᴛ"
-      );
-
-      return;
-    }
-
-    await bot.launch();
-
+  try {
     console.log(
-      "🤖 ᴛᴇʟᴇɢʀᴀᴍ ᴘᴀɴᴇʟ — ᴏɴʟɪɴᴇ"
+      "🤖 ᴛᴇʟᴇɢʀᴀᴍ — sᴛᴀʀᴛɪɴɢ..."
     );
 
+    await bot.launch({
+      dropPendingUpdates: true
+    });
+
+    console.log(
+      "🟢 ᴅᴇᴀᴅ × ʙᴏᴛ — ᴛᴇʟᴇɢʀᴀᴍ ᴏɴʟɪɴᴇ"
+    );
   } catch (error) {
     console.error(
-      "☠️ ʙᴏᴛ sᴛᴀʀᴛᴜᴘ ᴇʀʀᴏʀ:",
+      "🔴 ᴛᴇʟᴇɢʀᴀᴍ sᴛᴀʀᴛᴜᴘ ғᴀɪʟᴇᴅ:",
       error
     );
   }
 }
 
-startBot();
+startTelegram();
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
    🛑 SHUTDOWN
