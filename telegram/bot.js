@@ -4,53 +4,75 @@ import config from "../config.js";
 import { mainPanel } from "./menu.js";
 
 import {
-  startPairing,
-  isWaitingForNumber,
-  clearPairing,
-  requestPairingCode
+startPairing,
+isWaitingForNumber,
+clearPairing,
+requestPairingCode
 } from "./pairing.js";
 
-const bot = new Telegraf(config.TELEGRAM_BOT_TOKEN);
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 TELEGRAM BOT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+const token = String(
+config.TELEGRAM_BOT_TOKEN || ""
+).trim();
+
+if (!token) {
+throw new Error(
+"❌ TELEGRAM_BOT_TOKEN is missing."
+);
+}
+
+const bot = new Telegraf(token, {
+telegram: {
+apiRoot: "https://api.telegram.org"
+}
+});
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🏠 START
+🏠 START
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.start(async (ctx) => {
-  const panel = mainPanel();
+const panel = mainPanel();
 
-  await ctx.reply(panel.text, panel.keyboard);
+await ctx.reply(panel.text, panel.keyboard);
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🔗 PAIR WHATSAPP
+🔗 PAIR WHATSAPP
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.action("pair", async (ctx) => {
-  await ctx.answerCbQuery();
+await ctx.answerCbQuery();
 
-  await startPairing(ctx);
+await startPairing(ctx);
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   📱 PHONE NUMBER
+📱 PHONE NUMBER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.on("text", async (ctx, next) => {
-  const userId = ctx.from?.id;
+const userId = ctx.from?.id;
 
-  if (!userId || !isWaitingForNumber(userId)) {
-    return next();
-  }
+if (!userId || !isWaitingForNumber(userId)) {
+return next();
+}
 
-  const phoneNumber = ctx.message.text.trim();
+const phoneNumber = ctx.message.text.trim();
 
-  try {
-    const cleanNumber = phoneNumber.replace(/[^\d]/g, "");
+try {
+const cleanNumber = phoneNumber.replace(
+/[^\d]/g,
+""
+);
 
-    if (!/^\d{7,15}$/.test(cleanNumber)) {
-      await ctx.reply(
-        `
+if (!/^\d{7,15}$/.test(cleanNumber)) {
+  await ctx.reply(
+    `
+
 ╭━━━〔 ❌ ɪɴᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ 〕━━━╮
 ┃
 ┃ 📱 ᴇɴᴛᴇʀ ᴀ ᴠᴀʟɪᴅ
@@ -60,19 +82,23 @@ bot.on("text", async (ctx, next) => {
 ┃ +2348012345678
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-        `,
-        Markup.inlineKeyboard([
-          [
-            Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
-          ]
-        ])
-      );
+`,
+Markup.inlineKeyboard([
+[
+Markup.button.callback(
+"◀️ ʙᴀᴄᴋ",
+"home"
+)
+]
+])
+);
 
-      return;
-    }
+  return;
+}
 
-    await ctx.reply(
-      `
+await ctx.reply(
+  `
+
 ╭━━━〔 ⚡ ɢᴇɴᴇʀᴀᴛɪɴɢ ᴄᴏᴅᴇ 〕━━━╮
 ┃
 ┃ 📱 ɴᴜᴍʙᴇʀ: +${cleanNumber}
@@ -80,15 +106,17 @@ bot.on("text", async (ctx, next) => {
 ┃ ⏳ ᴘʟᴇᴀsᴇ ᴡᴀɪᴛ...
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-      `
-    );
+`
+);
 
-    const code = await requestPairingCode(cleanNumber);
+const code =
+  await requestPairingCode(cleanNumber);
 
-    clearPairing(userId);
+clearPairing(userId);
 
-    await ctx.reply(
-      `
+await ctx.reply(
+  `
+
 ╭━━━〔 🔐 ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ 〕━━━╮
 ┃
 ┃ 📱 ɴᴜᴍʙᴇʀ
@@ -106,23 +134,33 @@ bot.on("text", async (ctx, next) => {
 ┃ ᴇɴᴛᴇʀ ᴛʜᴇ ᴄᴏᴅᴇ ᴀʙᴏᴠᴇ.
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-      `,
-      Markup.inlineKeyboard([
-        [
-          Markup.button.callback("🔄 ᴘᴀɪʀ ᴀɢᴀɪɴ", "pair")
-        ],
-        [
-          Markup.button.callback("🏠 ᴍᴀɪɴ ᴘᴀɴᴇʟ", "home")
-        ]
-      ])
-    );
-  } catch (error) {
-    clearPairing(userId);
+`,
+Markup.inlineKeyboard([
+[
+Markup.button.callback(
+"🔄 ᴘᴀɪʀ ᴀɢᴀɪɴ",
+"pair"
+)
+],
+[
+Markup.button.callback(
+"🏠 ᴍᴀɪɴ ᴘᴀɴᴇʟ",
+"home"
+)
+]
+])
+);
+} catch (error) {
+clearPairing(userId);
 
-    console.error("☠️ ᴘᴀɪʀɪɴɢ ᴇʀʀᴏʀ:", error);
+console.error(
+  "☠️ ᴘᴀɪʀɪɴɢ ᴇʀʀᴏʀ:",
+  error
+);
 
-    await ctx.reply(
-      `
+await ctx.reply(
+  `
+
 ╭━━━〔 ❌ ᴘᴀɪʀɪɴɢ ғᴀɪʟᴇᴅ 〕━━━╮
 ┃
 ┃ ⚠️ ᴜɴᴀʙʟᴇ ᴛᴏ ɢᴇɴᴇʀᴀᴛᴇ
@@ -131,121 +169,109 @@ bot.on("text", async (ctx, next) => {
 ┃ 🔧 ᴄʜᴇᴄᴋ ᴛʜᴇ ʀᴇɴᴅᴇʀ ʟᴏɢs.
 ┃
 ╰━━━━━━━━━━━━━━━━━━━━╯
-      `,
-      Markup.inlineKeyboard([
-        [
-          Markup.button.callback("🔄 ʀᴇᴛʀʏ", "pair")
-        ],
-        [
-          Markup.button.callback("🏠 ʜᴏᴍᴇ", "home")
-        ]
-      ])
-    );
-  }
+`,
+Markup.inlineKeyboard([
+[
+Markup.button.callback(
+"🔄 ʀᴇᴛʀʏ",
+"pair"
+)
+],
+[
+Markup.button.callback(
+"🏠 ʜᴏᴍᴇ",
+"home"
+)
+]
+])
+);
+}
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   📊 STATUS
+📊 STATUS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.action("status", async (ctx) => {
-  await ctx.answerCbQuery();
+await ctx.answerCbQuery();
 
-  await ctx.editMessageText(
-    `
-╭━━━〔 📊 sᴛᴀᴛᴜs 〕━━━╮
-┃
-┃ 🟢 ᴛᴇʟᴇɢʀᴀᴍ: ᴏɴʟɪɴᴇ
-┃ 🟢 ᴡʜᴀᴛsᴀᴘᴘ: ᴇɴɢɪɴᴇ ʀᴜɴɴɪɴɢ
-┃ ⚡ ʙᴏᴛ: ʀᴜɴɴɪɴɢ
-┃
-╰━━━━━━━━━━━━━━━━━━━━╯
-    `,
-    Markup.inlineKeyboard([
-      [
-        Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
-      ]
-    ])
-  );
+await ctx.editMessageText(
+"╭━━━〔 📊 sᴛᴀᴛᴜs 〕━━━╮ ┃ ┃ 🟢 ᴛᴇʟᴇɢʀᴀᴍ: ᴏɴʟɪɴᴇ ┃ 🟢 ᴡʜᴀᴛsᴀᴘᴘ: ᴇɴɢɪɴᴇ ʀᴜɴɴɪɴɢ ┃ ⚡ ʙᴏᴛ: ʀᴜɴɴɪɴɢ ┃ ╰━━━━━━━━━━━━━━━━━━━━╯",
+Markup.inlineKeyboard([
+[
+Markup.button.callback(
+"◀️ ʙᴀᴄᴋ",
+"home"
+)
+]
+])
+);
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   📖 HOW TO USE
+📖 HOW TO USE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.action("howto", async (ctx) => {
-  await ctx.answerCbQuery();
+await ctx.answerCbQuery();
 
-  await ctx.editMessageText(
-    `
-╭━━━〔 📖 ʜᴏᴡ ᴛᴏ ᴜsᴇ 〕━━━╮
-┃
-┃ 1️⃣ ᴄʟɪᴄᴋ 🔗 ᴘᴀɪʀ
-┃
-┃ 2️⃣ sᴇɴᴅ ʏᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ
-┃    ɴᴜᴍʙᴇʀ
-┃
-┃ 3️⃣ ʀᴇᴄᴇɪᴠᴇ ᴛʜᴇ
-┃    ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ
-┃
-┃ 4️⃣ ᴇɴᴛᴇʀ ᴛʜᴇ ᴄᴏᴅᴇ
-┃    ɪɴ ᴡʜᴀᴛsᴀᴘᴘ
-┃
-┃ 5️⃣ 🟢 ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛs
-┃
-╰━━━━━━━━━━━━━━━━━━━━╯
-    `,
-    Markup.inlineKeyboard([
-      [
-        Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
-      ]
-    ])
-  );
+await ctx.editMessageText(
+"╭━━━〔 📖 ʜᴏᴡ ᴛᴏ ᴜsᴇ 〕━━━╮ ┃ ┃ 1️⃣ ᴄʟɪᴄᴋ 🔗 ᴘᴀɪʀ ┃ ┃ 2️⃣ sᴇɴᴅ ʏᴏᴜʀ ᴡʜᴀᴛsᴀᴘᴘ ┃    ɴᴜᴍʙᴇʀ ┃ ┃ 3️⃣ ʀᴇᴄᴇɪᴠᴇ ᴛʜᴇ ┃    ᴘᴀɪʀɪɴɢ ᴄᴏᴅᴇ ┃ ┃ 4️⃣ ᴇɴᴛᴇʀ ᴛʜᴇ ᴄᴏᴅᴇ ┃    ɪɴ ᴡʜᴀᴛsᴀᴘᴘ ┃ ┃ 5️⃣ 🟢 ᴡʜᴀᴛsᴀᴘᴘ ᴄᴏɴɴᴇᴄᴛs ┃ ╰━━━━━━━━━━━━━━━━━━━━╯",
+Markup.inlineKeyboard([
+[
+Markup.button.callback(
+"◀️ ʙᴀᴄᴋ",
+"home"
+)
+]
+])
+);
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ⚙️ SETTINGS
+⚙️ SETTINGS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.action("settings", async (ctx) => {
-  await ctx.answerCbQuery();
+await ctx.answerCbQuery();
 
-  await ctx.editMessageText(
-    `
-╭━━━〔 ⚙️ sᴇᴛᴛɪɴɢs 〕━━━╮
-┃
-┃ ☠️ ʙᴏᴛ: ᴅᴇᴀᴅ × ʙᴏᴛ
-┃ ⚡ ᴍᴏᴅᴇ: ᴘᴜʙʟɪᴄ
-┃ 🔐 sᴇᴄᴜʀɪᴛʏ: ᴇɴᴀʙʟᴇᴅ
-┃
-╰━━━━━━━━━━━━━━━━━━━━╯
-    `,
-    Markup.inlineKeyboard([
-      [
-        Markup.button.callback("◀️ ʙᴀᴄᴋ", "home")
-      ]
-    ])
-  );
+await ctx.editMessageText(
+"╭━━━〔 ⚙️ sᴇᴛᴛɪɴɢs 〕━━━╮ ┃ ┃ ☠️ ʙᴏᴛ: ᴅᴇᴀᴅ × ʙᴏᴛ ┃ ⚡ ᴍᴏᴅᴇ: ᴘᴜʙʟɪᴄ ┃ 🔐 sᴇᴄᴜʀɪᴛʏ: ᴇɴᴀʙʟᴇᴅ ┃ ╰━━━━━━━━━━━━━━━━━━━━╯",
+Markup.inlineKeyboard([
+[
+Markup.button.callback(
+"◀️ ʙᴀᴄᴋ",
+"home"
+)
+]
+])
+);
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🏠 HOME
+🏠 HOME
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.action("home", async (ctx) => {
-  await ctx.answerCbQuery();
+await ctx.answerCbQuery();
 
-  const panel = mainPanel();
+const panel = mainPanel();
 
-  await ctx.editMessageText(panel.text, panel.keyboard);
+await ctx.editMessageText(
+panel.text,
+panel.keyboard
+);
 });
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ❌ ERROR HANDLER
+❌ ERROR HANDLER
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 bot.catch((error) => {
-  console.error("☠️ ᴛᴇʟᴇɢʀᴀᴍ ᴇʀʀᴏʀ:", error);
+console.error(
+"☠️ ᴛᴇʟᴇɢʀᴀᴍ ᴇʀʀᴏʀ:",
+error
+);
 });
 
 export default bot;
